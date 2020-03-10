@@ -1,7 +1,10 @@
--- test_table definition
+DELETE FROM test_table1 WHERE 
 
-CREATE TABLE "test_table1" (
-	id INTEGER PRIMARY KEY,
-	link TEXT DEFAULT 0 NOT NULL,
-	create_time TEXT NOT NULL,
-	request_time TEXT DEFAULT 0 NOT NULL);
+
+SELECT * FROM test_table1 ORDER BY RANDOM() LIMIT 1
+
+
+
+SELECT * FROM test_table1
+  WHERE _ROWID_ >= (abs(random()) % (SELECT max(_ROWID_) FROM test_table1))
+  LIMIT 1;
