@@ -1,0 +1,19 @@
+CREATE TABLE comp(
+	ID INT PRIMARY KEY,
+	NAME TEXT NOT NULL,
+	AGE INT NOT NULL UNIQUE,
+	ADDRESS CHAR(25),
+	SALARY REAL,
+);
+
+
+
+CREATE TABLE CCC (
+	ID INT PRIMARY KEY
+)
+
+
+ALTER TABLE test_table ADD PRIMARY KEY (id);
+
+
+INSERT INTO test_table1 (link, create_time) VALUES ("sdsdsdsd", "sdf-werf-ger")
