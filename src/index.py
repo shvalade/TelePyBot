@@ -2,6 +2,7 @@ import logging
 import sqlite3
 import datetime
 
+from pathlib import Path
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
@@ -65,7 +66,9 @@ def help(update, context):
 
 
 def push_to_db(update, context):
-    conn = sqlite3.connect("..\\db\\database.db")
+    db_folder = Path("../db/")
+    file_to_open = db_folder / "database.db"
+    conn = sqlite3.connect(file_to_open)
     cursor = conn.cursor()
     sql = "SELECT COUNT(*) FROM test_table1"
     cursor.execute(sql)
@@ -83,7 +86,9 @@ def push_to_db(update, context):
 
 
 def get_from_db(update, context):
-    conn = sqlite3.connect("..\\db\\database.db")
+    db_folder = Path("../db/")
+    file_to_open = db_folder / "database.db"
+    conn = sqlite3.connect(file_to_open)
     cursor = conn.cursor()
     # sql = "SELECT * FROM albums WHERE artist=?"
     sql = "SELECT * FROM test_table1 ORDER BY RANDOM() LIMIT 1"
