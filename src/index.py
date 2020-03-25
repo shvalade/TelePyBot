@@ -2,6 +2,9 @@ import logging
 import sqlite3
 import datetime
 from pathlib import Path
+import urllib3
+import certifi
+from bs4 import BeautifulSoup
 
 from telegram import KeyboardButton, ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
@@ -30,7 +33,7 @@ def button_push_handler(update: Update, context: CallbackContext, click=True):
 
 
 def button_list_handler(update, context):
-    pass
+    db_list(update, context)
 
 
 def button_help_handler(update, context):
@@ -59,6 +62,28 @@ def help(update, context):
     update.message.reply_text('Help!')
 
 
+def db_list(update, context):
+
+    db_folder = Path("../db/")
+    file_to_open = db_folder / "database.db"
+    conn = sqlite3.connect(file_to_open)
+    cursor = conn.cursor()
+    sql = "SELECT link FROM actual_songs"
+    cursor.execute(sql)
+    logger.info(sql)
+    fetch = cursor.fetchall()
+    http = urllib3.PoolManager(cert_reqs='CERT_REQUIRED', ca_certs=certifi.where())
+    logger.info(fetch)
+    logger.info(fetch[0])
+    res = ''
+    for i in fetch:
+        r = http.request('GET', i[0])
+        soup = BeautifulSoup(r.data, 'html.parser')
+        res += soup.title.string + '\n'
+    update.message.reply_text(res)
+    pass
+
+
 def push_to_db(update, context, internal_link=''):
     db_folder = Path("../db/")
     file_to_open = db_folder / "database.db"
@@ -71,13 +96,14 @@ def push_to_db(update, context, internal_link=''):
 
     sql = "SELECT * FROM probability"
     cursor.execute(sql)
-    prob_table = list(cursor.fetchall())
+    prob_table = cursor.fetchall()
     result_prob = 0.0
-
+    logger.info(prob_table)
     for i in range(count):
         result_prob = result_prob + prob_table[i][1] / (count+1)
         temp = prob_table[i][1] - prob_table[i][1] / (count+1)  # TO DO add some cof
-        sql = f'UPDATE probability SET prob = "{temp}" WHERE id = {prob_table[i][1]}'
+        sql = f'UPDATE probability SET prob = "{temp}" WHERE id = {prob_table[i][0]}'
+        logger.info(sql)
         cursor.execute(sql)
     conn.commit()
 
@@ -90,7 +116,7 @@ def push_to_db(update, context, internal_link=''):
         link_ = internal_link
 
     # print(update.message.text + link_)
-    date_ = datetime.datetime.now().timestamp().__int__()
+    date_ = datetime.datetime.now()
     sql = f'INSERT INTO actual_songs (link, create_timestamp) VALUES ("{link_}","{date_}")'
     cursor.execute(sql)
 
@@ -108,20 +134,27 @@ def get_from_db(update, context):
     file_to_open = db_folder / "database.db"
     conn = sqlite3.connect(file_to_open)
     cursor = conn.cursor()
-    # sql = "SELECT * FROM albums WHERE artist=?"
-    sql = "SELECT * FROM actual_songs ORDER BY RANDOM() LIMIT 1"
-    # cursor.execute(sql, [context.args[0]])
+    sql = "SELECT id, link FROM actual_songs ORDER BY RANDOM() LIMIT 1"
     cursor.execute(sql)
     logger.info(sql)
-    fetch = cursor.fetchall()
+    fetch = cursor.fetchone()
     logger.info(fetch)
-    logger.info(int(fetch[0][0]))
-    date_ = datetime.datetime.now().__str__()
-    sql = f'UPDATE test_table1 SET request_time = "{date_}" WHERE id = {int(fetch[0][0])}'
+    logger.info(fetch[0])
+    date_ = datetime.datetime.now()
+    logger.info(date_)
+    # sql = f'UPDATE actual_songs SET last_access = "{date_}" WHERE id = {fetch[0]}'
+    sql = f'INSERT INTO old_songs (actual_song_id, create_timestamp, last_access, link, rotate_timestamp) \
+            SELECT id, create_timestamp, last_access, link, "{date_}" \
+            FROM actual_songs WHERE actual_songs.id = {fetch[0]}'
     cursor.execute(sql)
     conn.commit()
 
-    update.message.reply_text(fetch[0][1])
+    sql = f'DELETE FROM actual_songs WHERE id = {fetch[0]};\
+            DELETE FROM probability WHERE id = {fetch[0]};'
+    cursor.executescript(sql)
+    conn.commit()
+
+    update.message.reply_text(fetch[1])
 
 
 def error(update, context):
